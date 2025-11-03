@@ -1,13 +1,15 @@
-import { defineConfig } from "vite";
+import tailwindcss from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
-import wasm from "vite-plugin-wasm";
+import { defineConfig } from "vite";
 import { nodePolyfills } from "vite-plugin-node-polyfills";
+import wasm from "vite-plugin-wasm";
 
 // https://vite.dev/config/
 export default defineConfig(() => {
   return {
     plugins: [
       react(),
+      tailwindcss(),
       nodePolyfills({
         include: ["buffer"],
         globals: {
