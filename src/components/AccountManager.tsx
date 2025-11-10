@@ -5,13 +5,15 @@ import { useStellarAccounts } from "../providers/StellarAccountProvider";
 import { stellarService } from "../services/stellar.service";
 import { saveAccountToStorage } from "../utils/local-storage";
 import AccountCard from "./AccountCard";
+import CreateAssetModal from "./CreateAssetModal";
 import PaymentModal from "./PaymentModal";
 import StellarExpertLink from "./StellarExpertLink";
 
 export default function AccountManager() {
   const { getAccount, hashId } = useStellarAccounts();
-  const paymentModal = useModal();
   const [, forceUpdate] = useState({});
+  const paymentModal = useModal();
+  const assetModal = useModal();
 
   const bobAccount = getAccount("bob");
   const aliceAccount = getAccount("alice");
@@ -116,6 +118,13 @@ export default function AccountManager() {
           >
             <span className="flex items-center gap-2">Send Payment</span>
           </button>
+
+          <button
+            onClick={assetModal.openModal}
+            className="group px-6 py-3 bg-orange-600 text-white font-semibold rounded-xl shadow-lg hover:bg-orange-700 hover:shadow-xl disabled:bg-slate-300 disabled:cursor-not-allowed transition-all duration-200 transform hover:scale-105 disabled:transform-none cursor-pointer"
+          >
+            <span className="flex items-center gap-2">Create Asset</span>
+          </button>
         </div>
 
         <div className="grid lg:grid-cols-2 gap-8">
@@ -172,6 +181,13 @@ export default function AccountManager() {
       {paymentModal.showModal && (
         <PaymentModal
           closeModal={paymentModal.closeModal}
+          getAccount={getAccount}
+          onPaymentSuccess={refreshAccountBalances}
+        />
+      )}
+      {assetModal.showModal && (
+        <CreateAssetModal
+          closeModal={assetModal.closeModal}
           getAccount={getAccount}
           onPaymentSuccess={refreshAccountBalances}
         />
