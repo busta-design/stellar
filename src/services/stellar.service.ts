@@ -1,6 +1,7 @@
 import {
   Asset,
   BASE_FEE,
+  Claimant,
   Horizon,
   Keypair,
   Operation,
@@ -10,6 +11,7 @@ import {
 } from "@stellar/stellar-sdk";
 import { AccountBalance } from "../interfaces/account";
 import { IAccountBalanceResponse } from "../interfaces/balance";
+import { ICreateClaimableBalanceResponse } from "../interfaces/claimable-balance";
 import { IKeypair } from "../interfaces/kaypair";
 import {
   HORIZON_NETWORK_PASSPHRASE,
@@ -290,6 +292,85 @@ export class StellarService {
       const recieveKeypair = Keypair.fromSecret(receiverSecret);
       transaction.sign(recieveKeypair);
     }
+
+    return await this.submitTransaction(transaction);
+  }
+
+  async createClaimableBalance(
+    assetCode: string,
+    amount: string,
+    senderSecretKey: string,
+    destinationSecretKey: string
+  ): Promise<ICreateClaimableBalanceResponse> {
+    console.log("Ingresa a create Claimable");
+    const sourceKeypair = Keypair.fromSecret(senderSecretKey);
+    const destinationKeypair = Keypair.fromSecret(destinationSecretKey);
+    const sourceAccount = await this.server.loadAccount(
+      sourceKeypair.publicKey()
+    );
+
+    const asset = this.getAsset(assetCode, sourceKeypair.publicKey());
+    console.log({ asset });
+
+    const claimants = [
+      new Claimant(
+        sourceKeypair.publicKey(),
+        Claimant.predicateUnconditional()
+      ),
+      new Claimant(
+        destinationKeypair.publicKey(),
+        Claimant.predicateUnconditional()
+      ),
+    ];
+
+    const createClaimableBalanceOperation = Operation.createClaimableBalance({
+      amount: amount.toString(),
+      asset,
+      claimants: claimants,
+    });
+
+    const transaction = new TransactionBuilder(sourceAccount, {
+      fee: BASE_FEE,
+      networkPassphrase: this.networkPassphrase,
+    })
+      .addOperation(createClaimableBalanceOperation)
+      .setTimeout(180)
+      .build();
+
+    const claimableBalanceId = transaction.getClaimableBalanceId(0);
+
+    transaction.sign(sourceKeypair);
+
+    const response = await this.submitTransaction(transaction);
+    return {
+      transaction: response,
+      claimableBalanceId,
+    };
+  }
+
+  async claimClaimableBalance(
+    claimant: string,
+    claimableBalanceId: string
+  ): Promise<Horizon.HorizonApi.SubmitTransactionResponse> {
+    const claimantKeypair = Keypair.fromSecret(claimant);
+    const claimantAccount = await this.server.loadAccount(
+      claimantKeypair.publicKey()
+    );
+
+    const transaction = new TransactionBuilder(claimantAccount, {
+      fee: (await this.server.fetchBaseFee()).toString(),
+      networkPassphrase: this.networkPassphrase,
+    })
+      .addOperation(
+        Operation.claimClaimableBalance({
+          balanceId: claimableBalanceId,
+          source: claimantKeypair.publicKey(),
+        })
+      )
+      .setTimeout(180)
+      .build();
+
+    transaction.sign(claimantKeypair);
 
     return await this.submitTransaction(transaction);
   }
